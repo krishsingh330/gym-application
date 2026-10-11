@@ -1,6 +1,6 @@
 from http.client import HTTPException
 
-from fastapi import FastAPI,Depends
+from fastapi import FastAPI,Depends , HTTPException
 from passlib.context import CryptContext 
 from jose import jwt  
 from dotenv import load_dotenv
@@ -82,20 +82,32 @@ def login_user(request: RegisterRequest):
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 def get_current_user(token: str = Depends(oauth2_scheme)):
     
-    
+    credentials_exception = HTTPException(
+        status_code=401,
+        detail="Could not validate credentials"
+    )
     secret_key = os.getenv("SECRET_KEY")
     algorithm = os.getenv("ALGORITHM")
     try:
         payload = jwt.decode(token, secret_key, algorithms=[algorithm])
         email: str = payload.get("sub")
         if email is None:
-            return {"message": "Invalid token."}
+            raise credentials_exception
             
         return email
     except jwt.JWTError:
-        return {"message": "Invalid token."}
+        raise credentials_exception
 # protected route to get user profile
 
 @app.get("/profile")
 def get_profile(current_user: str = Depends(get_current_user)):
     return {"email": current_user}  
+
+
+# dependency injection 
+def get_userName():
+    return "John Doe"
+
+@app.get("/greet")
+def greet_user(user_name: str = Depends(get_userName)):
+    return {"message": f"Hello, {user_name}!"}

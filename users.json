@@ -2,13 +2,17 @@
   "users": [
     {
       "email": "ram@test.com",
-      "password": "$2b$12$LWXLO3gxqilot83ZsC7Qp.dBG9k/0FqqsIoN5vPGhFlDwwLrrESfq",
+      "password": "$2b$12$mPPqt8qacNDCVxrB8HjH5.DKwUkiu84LOJ4nyt3t0hMWSggxxJWc6",
       "name": "Ram",
       "age": 25
     },
     {
       "email": "ram2@test.com",
-      "password": "$2b$12$LWXLO3gxqilot83ZsC7Qp.dBG9k/0FqqsIoN5vPGhFlDwwLrrESfq"
+      "password": "$2b$12$mPPqt8qacNDCVxrB8HjH5.DKwUkiu84LOJ4nyt3t0hMWSggxxJWc6"
+    },
+    {
+      "email": "ram3@ram.com",
+      "password": "$2b$12$mPPqt8qacNDCVxrB8HjH5.DKwUkiu84LOJ4nyt3t0hMWSggxxJWc6"
     }
   ]
 }
