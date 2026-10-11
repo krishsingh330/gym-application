@@ -1,0 +1,14 @@
+{
+  "users": [
+    {
+      "email": "ram@test.com",
+      "password": "$2b$12$LWXLO3gxqilot83ZsC7Qp.dBG9k/0FqqsIoN5vPGhFlDwwLrrESfq",
+      "name": "Ram",
+      "age": 25
+    },
+    {
+      "email": "ram2@test.com",
+      "password": "$2b$12$LWXLO3gxqilot83ZsC7Qp.dBG9k/0FqqsIoN5vPGhFlDwwLrrESfq"
+    }
+  ]
+}
