@@ -1,4 +1,5 @@
 from http.client import HTTPException
+import secrets
 
 from fastapi import FastAPI,Depends , HTTPException
 from passlib.context import CryptContext 
@@ -6,8 +7,10 @@ from jose import jwt
 from dotenv import load_dotenv
 import json
 import os
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from fastapi.security import OAuth2PasswordBearer
+from datetime import datetime, timedelta
+
 
 # FASTAPI instance
 app = FastAPI(
@@ -111,3 +114,100 @@ def get_userName():
 @app.get("/greet")
 def greet_user(user_name: str = Depends(get_userName)):
     return {"message": f"Hello, {user_name}!"}
+
+OTPS_FILE = os.path.join(os.path.dirname(__file__), "otps.json")
+OTP_EXPIRATION_TIME = 300  # OTP expiration time in seconds (5 minutes)
+MAX_OTP_ATTEMPTS = 3  # Maximum number of OTP attempts
+
+
+def load_otps():
+    if not os.path.exists(OTPS_FILE):
+        return {}
+    with open(OTPS_FILE, "r", encoding="utf-8") as file:
+        return json.load(file)
+
+def save_otps(otps):
+    with open(OTPS_FILE, "w", encoding="utf-8") as file:
+        json.dump(otps, file, indent=2)
+
+def generate_otp():
+    return str(secrets.randbelow(900000) + 100000)
+
+def hash_otp(otp: str) -> str:
+    return pwd_context.hash(otp)
+
+def verify_otp(plain_otp: str, hashed_otp: str) -> bool:
+    return pwd_context.verify(plain_otp, hashed_otp)
+
+
+class OTPRequest(BaseModel):
+    email: EmailStr
+    
+    
+@app.post("/request-otp")
+def request_otp(request: OTPRequest):
+    # Check if the user exists
+    with open(USERS_FILE, "r", encoding="utf-8") as file:
+        users_data = json.load(file)
+        for user in users_data["users"]:
+            if user["email"] == request.email:
+                # Generate and store OTP
+                otp = generate_otp()
+                hashed_otp = hash_otp(otp)
+                otps = load_otps()
+                otps[request.email] = {
+                    "hashed_otp": hashed_otp,
+                    "attempts": 1,
+                    "timestamp": datetime.now().isoformat()
+                }
+                save_otps(otps)
+                # Here you would typically send the OTP to the user's email or mobile number
+                return {
+                    "otp": otp,  # In a real application, you would not return the OTP in the response  
+                    "message": "OTP sent successfully."
+                    }
+    
+    return {"message": "User not found."}
+class OTPVerificationRequest(BaseModel):
+    email: EmailStr
+    otp: str
+    
+@app.post("/verify-otp")
+def verify_otp_endpoint(request: OTPVerificationRequest):
+    otps = load_otps()
+    if request.email not in otps:
+        return {"message": "No OTP request found for this email."}
+    
+    otp_data = otps[request.email]
+    hashed_otp = otp_data["hashed_otp"]
+    attempts = otp_data["attempts"]
+    timestamp = datetime.fromisoformat(otp_data["timestamp"])
+    
+    # Check if OTP has expired
+    if datetime.now() - timestamp > timedelta(seconds=OTP_EXPIRATION_TIME):
+        del otps[request.email]
+        save_otps(otps)
+        return {"message": "OTP has expired. Please request a new one."}
+    
+    # Check if maximum attempts have been reached
+    if attempts >= MAX_OTP_ATTEMPTS:
+        del otps[request.email]
+        save_otps(otps)
+        return {"message": "Maximum OTP attempts reached. Please request a new one."}
+    
+    # Verify the OTP
+    if verify_otp(request.otp, hashed_otp):
+        del otps[request.email]
+        save_otps(otps)
+        # ceate jwt token for the user
+        secret_key = os.getenv("SECRET_KEY")
+        algorithm = os.getenv("ALGORITHM")
+        access_token = create_access_token({"sub": request.email}, secret_key, algorithm)   
+            
+        return {"message": "OTP verified successfully.", "access_token": access_token}
+    else:
+        otp_data["attempts"] += 1
+        save_otps(otps)
+        return {"message": "Invalid OTP. Please try again."}
+
+
